@@ -24,14 +24,14 @@
 
 #include "barometer.h"
 
-#include "gpio.h"
+#include "io.h"
 #include "system.h"
 #include "bus_i2c.h"
 #include "bus_spi.h"
 
 #include "build_config.h"
 
-#define DEBUG_MS5611
+//#define DEBUG_MS5611
 
 #ifndef MS5611_I2C_INSTANCE
 #define MS5611_I2C_INSTANCE I2C_DEVICE
@@ -69,33 +69,13 @@ STATIC_UNIT_TESTED uint32_t ms5611_up;  // static result of pressure measurement
 STATIC_UNIT_TESTED uint16_t ms5611_c[PROM_NB];  // on-chip ROM
 static uint8_t ms5611_osr = CMD_ADC_4096;
 
-typedef bool (*baroMS5611ReadRegisterFunc)(uint8_t reg_, uint8_t len_, uint8_t *buf);
-typedef bool (*baroMS5611WriteRegisterFunc)(uint8_t reg_, uint8_t data);
-
-typedef struct baroMS5611Config_s {
-    baroMS5611ReadRegisterFunc read;
-    baroMS5611WriteRegisterFunc write;
-} baroMS5611Config_t;
-
-baroMS5611Config_t baroMS5611config;
-
-#ifdef USE_I2C
-bool baroMS5611WriteI2C(uint8_t reg, uint8_t data)
-{
-    return i2cWrite(MS5611_I2C_INSTANCE, MS5611_ADDR, reg, data);
-}
-
-bool baroMS5611ReadI2C(uint8_t reg, uint8_t length, uint8_t *data)
-{
-    return i2cRead(MS5611_I2C_INSTANCE, MS5611_ADDR, reg, length, data);
-}
-#endif
-
 #if defined(USE_SPI) && defined(MS5611_SPI_INSTANCE)
-#define DISABLE_MS5611          GPIO_SetBits(MS5611_CS_GPIO,   MS5611_CS_PIN)
-#define ENABLE_MS5611           GPIO_ResetBits(MS5611_CS_GPIO, MS5611_CS_PIN)
+#define DISABLE_MS5611          IOHi(ms5611CsPin)
+#define ENABLE_MS5611           IOLo(ms5611CsPin)
 
-bool baroMS5611WriteSPI(uint8_t reg, uint8_t data)
+static IO_t ms5611CsPin = IO_NONE;
+
+bool baroMS5611Write(uint8_t reg, uint8_t data)
 {
     ENABLE_MS5611;
     delayMicroseconds(1);
@@ -106,7 +86,7 @@ bool baroMS5611WriteSPI(uint8_t reg, uint8_t data)
     return true;
 }
 
-bool baroMS5611ReadSPI(uint8_t reg, uint8_t length, uint8_t *data)
+bool baroMS5611Read(uint8_t reg, uint8_t length, uint8_t *data)
 {
     bool ack = false;
 
@@ -118,6 +98,16 @@ bool baroMS5611ReadSPI(uint8_t reg, uint8_t length, uint8_t *data)
 
     return ack;
 }
+#else
+bool baroMS5611Write(uint8_t reg, uint8_t data)
+{
+    return i2cWrite(MS5611_I2C_INSTANCE, MS5611_ADDR, reg, data);
+}
+
+bool baroMS5611Read(uint8_t reg, uint8_t length, uint8_t *data)
+{
+    return i2cRead(MS5611_I2C_INSTANCE, MS5611_ADDR, reg, length, data);
+}
 #endif
 
 bool ms5611Detect(baro_t *baro)
@@ -126,23 +116,16 @@ bool ms5611Detect(baro_t *baro)
     uint8_t sig;
     int i;
 
+#if defined(USE_SPI) && defined(MS5611_SPI_INSTANCE)
+    ms5611CsPin = IOGetByTag(IO_TAG(MS5611_CS_PIN));
+    IOInit(ms5611CsPin, OWNER_SYSTEM, RESOURCE_SPI);
+    IOConfigGPIO(ms5611CsPin, SPI_IO_CS_CFG);
+#endif
+
     delay(10); // No idea how long the chip takes to power-up, but let's make it 10ms
 
-#ifdef USE_I2C
-    ack = i2cRead(MS5611_I2C_INSTANCE, MS5611_ADDR, CMD_PROM_RD, 1, &sig);
-    if (ack) {
-        baroMS5611config.read = baroMS5611ReadI2C;
-        baroMS5611config.write = baroMS5611WriteI2C;
-    }
-#endif
-#if defined(USE_SPI) && defined(MS5611_SPI_INSTANCE)
-    ack = baroMS5611ReadSPI(CMD_PROM_RD, 1, &sig);
-    if (ack) {
-        baroMS5611config.read = baroMS5611ReadSPI;
-        baroMS5611config.write = baroMS5611WriteSPI;
-    }
-#endif
-    else
+    ack = baroMS5611Read(CMD_PROM_RD, 1, &sig);
+    if (!ack)
         return false;
 
     ms5611_reset();
@@ -167,14 +150,14 @@ bool ms5611Detect(baro_t *baro)
 
 static void ms5611_reset(void)
 {
-    baroMS5611config.write(CMD_RESET, 1);
+    baroMS5611Write(CMD_RESET, 1);
     delayMicroseconds(2800);
 }
 
 static uint16_t ms5611_prom(int8_t coef_num)
 {
     uint8_t rxbuf[2] = { 0, 0 };
-    baroMS5611config.read(CMD_PROM_RD + coef_num * 2, 2, rxbuf); // send PROM READ command
+    baroMS5611Read(CMD_PROM_RD + coef_num * 2, 2, rxbuf); // send PROM READ command
     return rxbuf[0] << 8 | rxbuf[1];
 }
 
@@ -211,13 +194,13 @@ STATIC_UNIT_TESTED int8_t ms5611_crc(uint16_t *prom)
 static uint32_t ms5611_read_adc(void)
 {
     uint8_t rxbuf[3];
-    baroMS5611config.read(CMD_ADC_READ, 3, rxbuf); // read ADC
+    baroMS5611Read(CMD_ADC_READ, 3, rxbuf); // read ADC
     return (rxbuf[0] << 16) | (rxbuf[1] << 8) | rxbuf[2];
 }
 
 static void ms5611_start_ut(void)
 {
-    baroMS5611config.write(CMD_ADC_CONV + CMD_ADC_D2 + ms5611_osr, 1); // D2 (temperature) conversion start!
+    baroMS5611Write(CMD_ADC_CONV + CMD_ADC_D2 + ms5611_osr, 1); // D2 (temperature) conversion start!
 }
 
 static void ms5611_get_ut(void)
@@ -230,7 +213,7 @@ static void ms5611_get_ut(void)
 
 static void ms5611_start_up(void)
 {
-    baroMS5611config.write(CMD_ADC_CONV + CMD_ADC_D1 + ms5611_osr, 1); // D1 (pressure) conversion start!
+    baroMS5611Write(CMD_ADC_CONV + CMD_ADC_D1 + ms5611_osr, 1); // D1 (pressure) conversion start!
 }
 
 static void ms5611_get_up(void)

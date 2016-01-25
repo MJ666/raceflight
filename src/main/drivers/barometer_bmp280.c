@@ -31,6 +31,8 @@
 
 #include "barometer_bmp280.h"
 
+//#define DEBUG_BMP280
+
 #ifdef BARO
 
 #ifndef BMP280_I2C_INSTANCE
@@ -108,8 +110,10 @@ static void bmp280_get_up(void);
 STATIC_UNIT_TESTED void bmp280_calculate(int32_t *pressure, int32_t *temperature);
 
 #if defined(USE_SPI) && defined(BMP280_SPI_INSTANCE)
-#define DISABLE_BMP280          GPIO_SetBits(BMP280_CS_GPIO,   BMP280_CS_PIN)
-#define ENABLE_BMP280           GPIO_ResetBits(BMP280_CS_GPIO, BMP280_CS_PIN)
+#define DISABLE_BMP280          IOHi(bmp280CsPin)
+#define ENABLE_BMP280           IOLo(bmp280CsPin)
+
+static IO_t bmp280CsPin = IO_NONE;
 
 bool baroBMP280Write(uint8_t reg, uint8_t data)
 {
@@ -151,6 +155,12 @@ bool bmp280Detect(baro_t *baro)
 {
     if (bmp280InitDone)
         return true;
+
+#if defined(USE_SPI) && defined(BMP280_SPI_INSTANCE)
+    bmp280CsPin = IOGetByTag(IO_TAG(BMP280_CS_PIN));
+    IOInit(bmp280CsPin, OWNER_SYSTEM, RESOURCE_SPI);
+    IOConfigGPIO(bmp280CsPin, SPI_IO_CS_CFG);
+#endif
 
     delay(20);
 
@@ -204,6 +214,11 @@ static void bmp280_get_up(void)
     baroBMP280Read(BMP280_PRESSURE_MSB_REG, BMP280_DATA_FRAME_SIZE, data);
     bmp280_up = (int32_t)((((uint32_t)(data[0])) << 12) | (((uint32_t)(data[1])) << 4) | ((uint32_t)data[2] >> 4));
     bmp280_ut = (int32_t)((((uint32_t)(data[3])) << 12) | (((uint32_t)(data[4])) << 4) | ((uint32_t)data[5] >> 4));
+
+#ifdef DEBUG_BMP280
+    debug[0] = bmp280_up;
+    debug[1] = bmp280_ut;
+#endif
 }
 
 // Returns temperature in DegC, resolution is 0.01 DegC. Output value of "5123" equals 51.23 DegC
@@ -248,6 +263,11 @@ STATIC_UNIT_TESTED void bmp280_calculate(int32_t *pressure, int32_t *temperature
     uint32_t p;
     t = bmp280_compensate_T(bmp280_ut);
     p = bmp280_compensate_P(bmp280_up);
+
+#ifdef DEBUG_BMP280
+    debug[2] = t;
+    debug[3] = p;
+#endif
 
     if (pressure)
         *pressure = (int32_t)(p / 256);

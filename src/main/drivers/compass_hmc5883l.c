@@ -31,6 +31,7 @@
 #include "nvic.h"
 #include "gpio.h"
 #include "bus_i2c.h"
+#include "bus_spi.h"
 #include "light_led.h"
 #include "drivers/exti.h"
 
@@ -151,15 +152,90 @@ void hmc5883_extiHandler(extiCallbackRec_t* cb)
 }
 #endif
 
+#if defined(USE_SPI) && defined(HMC5883_SPI_INSTANCE)
+#define DISABLE_HMC5883         IOHi(hmc5883CsPin)
+#define ENABLE_HMC5883          IOLo(hmc5883CsPin)
+
+static IO_t hmc5883CsPin = IO_NONE;
+
+bool baroHMC5883WriteRegister(uint8_t reg, uint8_t data)
+{
+//    spiSetDivisor(HMC5883_SPI_INSTANCE, 16);
+
+    ENABLE_HMC5883;
+    delayMicroseconds(1);
+    spiTransferByte(HMC5883_SPI_INSTANCE, reg);
+    spiTransferByte(HMC5883_SPI_INSTANCE, data);
+    DISABLE_HMC5883;
+
+    return true;
+}
+
+bool baroHMC5883Read(uint8_t reg, uint8_t length, uint8_t *data)
+{
+    bool ack = false;
+
+//    spiSetDivisor(HMC5883_SPI_INSTANCE, 16);
+
+    ENABLE_HMC5883;
+    delayMicroseconds(1);
+    spiTransferByte(HMC5883_SPI_INSTANCE, reg | 0x80); // read transaction
+    ack = spiTransfer(HMC5883_SPI_INSTANCE, data, NULL, length);
+    DISABLE_HMC5883;
+
+    return ack;
+}
+
+bool baroHMC5883Write(uint8_t reg, uint8_t data) {
+
+    uint8_t in;
+    uint8_t attemptsRemaining = 20;
+
+//    spiSetDivisor(HMC5883_SPI_INSTANCE, 16);
+
+    baroHMC5883WriteRegister(reg, data);
+    delayMicroseconds(10);
+
+    do {
+        baroHMC5883Read(reg, 1, &in);
+        if (in == data) {
+            return true;
+        } else {
+            debug[3]++;
+            baroHMC5883WriteRegister(reg, data);
+            delayMicroseconds(10);
+        }
+    } while (attemptsRemaining--);
+    return false;
+}
+#else
+bool baroHMC5883Read(uint8_t reg, uint8_t length, uint8_t *data)
+{
+    return i2cRead(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, reg, length, data);
+}
+
+bool baroHMC5883Write(uint8_t reg, uint8_t data)
+{
+    return i2cWrite(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, reg, data);
+}
+#endif
+
+
 bool hmc5883lDetect(mag_t* mag, const hmc5883Config_t *hmc5883ConfigToUse)
 {
     bool ack = false;
-    uint8_t sig = 0;
+    uint8_t buf[3];
+
+#if defined(USE_SPI) && defined(HMC5883_SPI_INSTANCE)
+    hmc5883CsPin = IOGetByTag(IO_TAG(HMC5883_CS_PIN));
+    IOInit(hmc5883CsPin, OWNER_SYSTEM, RESOURCE_SPI);
+    IOConfigGPIO(hmc5883CsPin, SPI_IO_CS_CFG);
+#endif
 
     hmc5883Config = hmc5883ConfigToUse;
 
-    ack = i2cRead(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, 0x0A, 1, &sig);
-    if (!ack || sig != 'H')
+    ack = baroHMC5883Read(0x0A, 3, buf);
+    if (!ack || buf[0] != 'H') // || buf[1] != '4' || buf[2] != '3')
         return false;
 
     mag->init = hmc5883lInit;
@@ -183,15 +259,15 @@ void hmc5883lInit(void)
     }
 #endif
     delay(50);
-    i2cWrite(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, HMC58X3_R_CONFA, 0x010 + HMC_POS_BIAS);   // Reg A DOR = 0x010 + MS1, MS0 set to pos bias
+    baroHMC5883Write(HMC58X3_R_CONFA, 0x010 + HMC_POS_BIAS);   // Reg A DOR = 0x010 + MS1, MS0 set to pos bias
     // Note that the  very first measurement after a gain change maintains the same gain as the previous setting.
     // The new gain setting is effective from the second measurement and on.
-    i2cWrite(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, HMC58X3_R_CONFB, 0x60); // Set the Gain to 2.5Ga (7:5->011)
+    baroHMC5883Write(HMC58X3_R_CONFB, 0x60); // Set the Gain to 2.5Ga (7:5->011)
     delay(100);
     hmc5883lRead(magADC);
 
     for (i = 0; i < 10; i++) {  // Collect 10 samples
-        i2cWrite(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, HMC58X3_R_MODE, 1);
+        baroHMC5883Write(HMC58X3_R_MODE, 1);
         delay(50);
         hmc5883lRead(magADC);       // Get the raw values in case the scales have already been changed.
 
@@ -209,9 +285,9 @@ void hmc5883lInit(void)
     }
 
     // Apply the negative bias. (Same gain)
-    i2cWrite(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, HMC58X3_R_CONFA, 0x010 + HMC_NEG_BIAS);   // Reg A DOR = 0x010 + MS1, MS0 set to negative bias.
+    baroHMC5883Write(HMC58X3_R_CONFA, 0x010 + HMC_NEG_BIAS);   // Reg A DOR = 0x010 + MS1, MS0 set to negative bias.
     for (i = 0; i < 10; i++) {
-        i2cWrite(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, HMC58X3_R_MODE, 1);
+        baroHMC5883Write(HMC58X3_R_MODE, 1);
         delay(50);
         hmc5883lRead(magADC);               // Get the raw values in case the scales have already been changed.
 
@@ -233,9 +309,9 @@ void hmc5883lInit(void)
     magGain[Z] = fabsf(660.0f * HMC58X3_Z_SELF_TEST_GAUSS * 2.0f * 10.0f / xyz_total[Z]);
 
     // leave test mode
-    i2cWrite(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, HMC58X3_R_CONFA, 0x70);   // Configuration Register A  -- 0 11 100 00  num samples: 8 ; output rate: 15Hz ; normal measurement mode
-    i2cWrite(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, HMC58X3_R_CONFB, 0x20);   // Configuration Register B  -- 001 00000    configuration gain 1.3Ga
-    i2cWrite(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, HMC58X3_R_MODE, 0x00);    // Mode register             -- 000000 00    continuous Conversion Mode
+    baroHMC5883Write(HMC58X3_R_CONFA, 0x70);   // Configuration Register A  -- 0 11 100 00  num samples: 8 ; output rate: 15Hz ; normal measurement mode
+    baroHMC5883Write(HMC58X3_R_CONFB, 0x20);   // Configuration Register B  -- 001 00000    configuration gain 1.3Ga
+    baroHMC5883Write(HMC58X3_R_MODE, 0x00);    // Mode register             -- 000000 00    continuous Conversion Mode
     delay(100);
 
     if (!bret) {                // Something went wrong so get a best guess
@@ -263,7 +339,7 @@ bool hmc5883lRead(int16_t *magData)
 {
     uint8_t buf[6];
 
-    bool ack = i2cRead(HMC5883L_I2C_INSTANCE, MAG_ADDRESS, MAG_DATA_REGISTER, 6, buf);
+    bool ack = baroHMC5883Read(MAG_DATA_REGISTER, 6, buf);
     if (!ack) {
         return false;
     }
