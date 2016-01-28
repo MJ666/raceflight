@@ -547,6 +547,14 @@ static void detectMag(magSensor_e magHardwareToUse)
     hmc5883Config = &spRacingF3Hmc5883Config;
 #endif
 
+#ifdef AQM4
+    static const hmc5883Config_t aqm4Hmc5883Config = {
+        .io = IO_TAG(PA2)
+    };
+
+    hmc5883Config = &aqm4Hmc5883Config;
+#endif
+
 #endif
 
 #ifdef AQ32_V2

@@ -53,7 +53,12 @@ typedef enum {
     SERIALRX_XBUS_MODE_B_RJ01 = 6,
     SERIALRX_IBUS = 7,
     SERIALRX_JETIEXBUS = 8,
+#ifdef DSMX_RX
+    SERIALRX_DSMX = 8,
+    SERIALRX_PROVIDER_MAX = SERIALRX_DSMX
+#else
     SERIALRX_PROVIDER_MAX = SERIALRX_JETIEXBUS
+#endif
 } SerialRXType;
 
 #define SERIALRX_PROVIDER_COUNT (SERIALRX_PROVIDER_MAX + 1)
@@ -129,6 +134,9 @@ typedef struct rxConfig_s {
 
     rxChannelRangeConfiguration_t channelRanges[NON_AUX_CHANNEL_COUNT];
     bool rxSerialInverted;
+#ifdef DSMX_RX
+    uint8_t bind_data[6];                   // DSMX bind code
+#endif
 } rxConfig_t;
 
 #define REMAPPABLE_CHANNEL_COUNT (sizeof(((rxConfig_t *)0)->rcmap) / sizeof(((rxConfig_t *)0)->rcmap[0]))

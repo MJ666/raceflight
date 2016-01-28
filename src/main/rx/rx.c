@@ -52,6 +52,7 @@
 #include "rx/xbus.h"
 #include "rx/ibus.h"
 #include "rx/jetiexbus.h"
+#include "rx/dsmx.h"
 
 #include "rx/rx.h"
 
@@ -65,6 +66,7 @@ bool spektrumInit(rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig, rcRe
 bool sumdInit(rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig, rcReadRawDataPtr *callback);
 bool sumhInit(rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig, rcReadRawDataPtr *callback);
 bool ibusInit(rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig, rcReadRawDataPtr *callback);
+bool dsmInit(rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig, rcReadRawDataPtr *callback);
 
 void rxMspInit(rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig, rcReadRawDataPtr *callback);
 
@@ -242,6 +244,12 @@ void serialRxInit(rxConfig_t *rxConfig)
             rxRefreshRate = 5500;
             enabled = jetiExBusInit(rxConfig, &rxRuntimeConfig, &rcReadRawFunc);
             break;
+#ifdef DSMX_RX
+        case SERIALRX_DSMX:
+            rxRefreshRate = 11000;
+            enabled = dsmInit(rxConfig, &rxRuntimeConfig, &rcReadRawFunc);
+            break;
+#endif
     }
 
     if (!enabled) {
@@ -278,6 +286,10 @@ uint8_t serialRxFrameStatus(rxConfig_t *rxConfig)
             return ibusFrameStatus();
         case SERIALRX_JETIEXBUS:
             return jetiExBusFrameStatus();
+#ifdef DSMX_RX
+        case SERIALRX_DSMX:
+            return dsmFrameStatus();
+#endif
     }
     return SERIAL_RX_FRAME_PENDING;
 }

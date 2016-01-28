@@ -371,6 +371,7 @@ static const char * const lookupTableSerialRX[] = {
     "XB-B-RJ01",
     "IBUS",
     "JETIEXBUS"
+    "DSMX"
 };
 
 static const char * const lookupTableGyroLpf[] = {

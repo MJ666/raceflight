@@ -649,6 +649,10 @@ static void resetConf(void)
 #ifdef CONFIG_RX_SERIAL_PORT
     masterConfig.serialConfig.portConfigs[CONFIG_RX_SERIAL_PORT].functionMask = FUNCTION_RX_SERIAL;
 #endif
+#if defined(AQM4)
+    featureSet(FEATURE_RX_SERIAL);
+    masterConfig.serialConfig.portConfigs[1].functionMask = FUNCTION_RX_SERIAL;
+#endif
 
     // alternative defaults settings for ALIENFLIGHTF1 and ALIENFLIGHTF3 targets
 #ifdef ALIENFLIGHT

@@ -711,6 +711,57 @@ static const uint16_t airPWM[] = {
 };
 #endif
 
+#ifdef AQM4
+static const uint16_t multiPPM[] = {
+    PWM9  | (MAP_TO_PPM_INPUT << 8),         // PPM input
+    PWM1  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #1
+    PWM2  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #2
+    PWM3  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #3
+    PWM4  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #4
+    PWM5  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #5
+    PWM6  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #6
+    PWM7  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #7 or servo #1 (swap to servo if needed)
+    PWM8  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #8 or servo #2 (swap to servo if needed)
+    0xFFFF
+};
+static const uint16_t multiPWM[] = {
+    PWM1  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #1
+    PWM2  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #2
+    PWM3  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #3
+    PWM4  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #4
+    PWM5  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #5
+    PWM6  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #6
+    PWM7  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #7 or servo #1 (swap to servo if needed)
+    PWM8  | (MAP_TO_MOTOR_OUTPUT << 8),      // motor #8 or servo #2 (swap to servo if needed)
+    0xFFFF
+};
+
+static const uint16_t airPPM[] = {
+    PWM9  | (MAP_TO_PPM_INPUT << 8),        // PPM input
+    PWM1  | (MAP_TO_MOTOR_OUTPUT << 8),     // motor #1
+    PWM2  | (MAP_TO_MOTOR_OUTPUT << 8),     // motor #2
+    PWM3  | (MAP_TO_MOTOR_OUTPUT << 8),     // motor #3
+    PWM4  | (MAP_TO_MOTOR_OUTPUT << 8),     // motor #4
+    PWM5  | (MAP_TO_SERVO_OUTPUT << 8),     // servo #1
+    PWM6  | (MAP_TO_SERVO_OUTPUT << 8),     // servo #2
+    PWM7  | (MAP_TO_SERVO_OUTPUT << 8),     // servo #3
+    PWM8  | (MAP_TO_SERVO_OUTPUT << 8),     // servo #4
+    0xFFFF
+};
+
+static const uint16_t airPWM[] = {
+    PWM1  | (MAP_TO_MOTOR_OUTPUT << 8),     // motor #1
+    PWM2  | (MAP_TO_MOTOR_OUTPUT << 8),     // motor #2
+    PWM3  | (MAP_TO_MOTOR_OUTPUT << 8),     // motor #3
+    PWM4  | (MAP_TO_MOTOR_OUTPUT << 8),     // motor #4
+    PWM5  | (MAP_TO_SERVO_OUTPUT << 8),     // servo #1
+    PWM6  | (MAP_TO_SERVO_OUTPUT << 8),     // servo #2
+    PWM7  | (MAP_TO_SERVO_OUTPUT << 8),     // servo #3
+    PWM8  | (MAP_TO_SERVO_OUTPUT << 8),     // servo #4
+    0xFFFF
+};
+#endif
+
 #if defined(VRCORE)
 static const uint16_t multiPPM[] = {
     PWM1  | (MAP_TO_PPM_INPUT << 8),     // PPM input
@@ -1281,7 +1332,7 @@ if (init->useBuzzerP6) {
             }
 #endif
 
-#if defined(MOTOLAB)
+#if defined(MOTOLAB) || defined(AQM4)
             // remap PWM 7+8 as servos
             if (timerIndex == PWM7 || timerIndex == PWM8)
                 type = MAP_TO_SERVO_OUTPUT;
@@ -1343,6 +1394,11 @@ if (init->useBuzzerP6) {
 #ifdef AQ32_V2
             if (AVOIDANCE_CONDITION) {
                 ppmAvoidPWMTimerClash(timerHardwarePtr, TIM4, init);
+            }
+#endif
+#ifdef AQM4
+            if (AVOIDANCE_CONDITION) {
+                ppmAvoidPWMTimerClash(timerHardwarePtr, TIM9, init);
             }
 #endif
 #ifdef VRCORE
