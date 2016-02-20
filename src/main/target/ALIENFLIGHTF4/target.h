@@ -62,10 +62,10 @@
 
 //#define SDCARD_DETECT_INVERTED
 
-//#define SDCARD_DETECT_PIN                   PC14
+#define SDCARD_DETECT_PIN                   PB10
 //#define SDCARD_DETECT_EXTI_LINE             EXTI_Line14
 //#define SDCARD_DETECT_EXTI_PIN_SOURCE       EXTI_PinSource14
-//#define SDCARD_DETECT_EXTI_PORT_SOURCE      EXTI_PortSourceGPIOC
+//#define SDCARD_DETECT_EXTI_PORT_SOURCE      EXTI_PortSourceGPIOB
 //#define SDCARD_DETECT_EXTI_IRQn             EXTI15_10_IRQn
 
 #define SDCARD_SPI_INSTANCE                 SPI2
@@ -111,9 +111,9 @@
 #define USART2_RX_PIN PA3
 #define USART2_TX_PIN PA2 //inverter
 
-#define USE_USART3
-#define USART3_RX_PIN PB11
-#define USART3_TX_PIN PB10
+//'define USE_USART3
+//#define USART3_RX_PIN PB11
+//#define USART3_TX_PIN PB10
 
 #define USE_USART4
 #define USART4_RX_PIN PC10
@@ -123,7 +123,7 @@
 //#define USART5_RX_PIN PD2
 //#define USART5_TX_PIN PC12
 
-#define SERIAL_PORT_COUNT 5
+#define SERIAL_PORT_COUNT 4
 
 //#define USE_ESCSERIAL
 //#define ESCSERIAL_TIMER_TX_HARDWARE 0 // PWM 1
