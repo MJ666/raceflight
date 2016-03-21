@@ -685,7 +685,8 @@ SPARKY2_SRC = $(STM32F4xx_COMMON_SRC) \
 		   $(VCPF4_SRC)
 
 ALIENFLIGHTF4_SRC = $(STM32F4xx_COMMON_SRC) \
-		   drivers/accgyro_spi_mpu9250.c \
+		   drivers/accgyro_mpu6500.c \
+		   drivers/accgyro_spi_mpu6500.c \
 		   drivers/barometer_bmp280.c \
 		   drivers/barometer_ms5611.c \
 		   drivers/compass_ak8963.c \

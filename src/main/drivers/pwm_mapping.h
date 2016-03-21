@@ -38,9 +38,9 @@
 #define PWM_TIMER_MHZ 1
 
 //these three have to be the same because of the ppmAvoidPWMTimerClash functions
-#define ONESHOT125_TIMER_MHZ 12
+#define ONESHOT125_TIMER_MHZ 4
 #define MULTISHOT_TIMER_MHZ 12
-#define PWM_BRUSHED_TIMER_MHZ 12
+#define PWM_BRUSHED_TIMER_MHZ 24
 
 
 typedef struct sonarGPIOConfig_s {
