@@ -45,14 +45,12 @@ void systemReset(void)
 	NVIC_SystemReset();
 }
 
-void systemResetToBootloader(void) {
-
-
+void systemResetToBootloader(void) 
+{
     if (mpuConfiguration.reset)
         mpuConfiguration.reset();
 
 	*((uint32_t *)0x2001FFFC) = 0xDEADBEEF; // 128KB SRAM STM32F4XX
-
 
 	__disable_irq();
 	NVIC_SystemReset();

@@ -126,7 +126,7 @@ void systemInit(void)
     SysTick_Config(SystemCoreClock / 1000);
 }
 
-#if 1
+#ifndef USE_ALTERNATE_DELAY
 void delayMicroseconds(uint32_t us)
 {
     uint32_t now = micros();
@@ -164,6 +164,13 @@ void delay(uint32_t ms)
 {
     while (ms--)
         delayMicroseconds(1000);
+}
+
+void simpleDelay(uint32_t time)
+{
+    int i;
+    while (time--)
+        for(i = 0; i < 10000; i++);
 }
 
 #define SHORT_FLASH_DURATION 50

@@ -2592,7 +2592,7 @@ static void cliTasks(char *cmdline)
 static void cliVersion(char *cmdline)
 {
     UNUSED(cmdline);
-    cliPrintf("# RaceFlight %s%s - %s /%s %s / %s (%s)",
+    cliPrintf("# RaceFlight %s%s - %s / %s %s / %s (%s)",
 		FC_VERSION_STRING,
 		FC_VERSION_LETTER,
 		FC_VERSION_COMMENT,

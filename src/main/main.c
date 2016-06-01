@@ -161,18 +161,9 @@ void init(void)
     uint8_t i;
     drv_pwm_config_t pwm_params;
 
-    printfSupportInit();
-
-    initEEPROM();
-
-    ensureEEPROMContainsValidData();
-    readEEPROM();
-
-    systemState |= SYSTEM_STATE_CONFIG_LOADED;
-
 #ifdef STM32F303
     // start fpu
-    SCB->CPACR = (0x3 << (10*2)) | (0x3 << (11*2));
+    SCB->CPACR = (0x3 << (10 * 2)) | (0x3 << (11 * 2));
 #endif
 
 #ifdef STM32F303xC
@@ -189,6 +180,15 @@ void init(void)
     //i2cSetOverclock(masterConfig.i2c_overclock);
 
     systemInit();
+
+    printfSupportInit();
+
+    initEEPROM();
+
+    ensureEEPROMContainsValidData();
+    readEEPROM();
+
+    systemState |= SYSTEM_STATE_CONFIG_LOADED;
 
 #ifdef USE_HARDWARE_REVISION_DETECTION
     detectHardwareRevision();
@@ -209,6 +209,7 @@ void init(void)
 #else
     ledInit(false);
 #endif
+    LED2_ON;
     
 #ifdef USE_EXTI
     EXTIInit();
@@ -440,6 +441,8 @@ void init(void)
 
     LED1_ON;
     LED0_OFF;
+    LED2_OFF;
+    
     for (i = 0; i < 10; i++) {
         LED1_TOGGLE;
         LED0_TOGGLE;
@@ -605,6 +608,7 @@ void processLoopback(void) {
 
 int main(void) {
   
+    simpleDelay(350);
     init();
 
     /* Setup scheduler */
@@ -683,6 +687,8 @@ int main(void) {
 
 void HardFault_Handler(void) {
     // fall out of the sky
+    LED2_ON;
+    
     uint8_t requiredState = SYSTEM_STATE_CONFIG_LOADED | SYSTEM_STATE_MOTORS_READY;
     if ((systemState & requiredState) == requiredState) {
        stopMotorsNoDelay();
@@ -693,7 +699,7 @@ void HardFault_Handler(void) {
 
     while(1) {
 #ifdef LED2
-        delay(5);
+        simpleDelay(300);
         LED2_TOGGLE;
 #endif
     }
